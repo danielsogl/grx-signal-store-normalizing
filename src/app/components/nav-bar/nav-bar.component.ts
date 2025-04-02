@@ -8,7 +8,7 @@ import { RouterLink } from '@angular/router';
   selector: 'app-nav-bar',
   imports: [MatToolbarModule, MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './nav-bar.component.html',
-  styleUrl: './nav-bar.component.scss'
+  styleUrl: './nav-bar.component.scss',
 })
 export class NavBarComponent {
   title = 'Normalize Demo';

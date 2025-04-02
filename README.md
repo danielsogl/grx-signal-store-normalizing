@@ -1,59 +1,90 @@
-# NgrxSignalStoreNormalizing
+# NgRx Signal Store Normalization Demo
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.5.
+This project demonstrates how to use NgRx Signal Store with entity adapters to normalize nested data for better performance and state management.
 
-## Development server
+## Overview
 
-To start a local development server, run:
+The demo shows how to:
 
-```bash
-ng serve
-```
+1. Define entity models with relationships
+2. Create entity configurations with custom ID selectors
+3. Set up a signal store with entity collections
+4. Normalize nested data into separate entity collections
+5. Perform CRUD operations on normalized entities
+6. Create denormalized views of the data when needed for the UI
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Project Structure
 
-## Code scaffolding
+- **Models**: Define the shape of our entities (User, Comment, Post)
+- **Entity Adapters**: Configure how entities are identified and stored
+- **Blog Store**: Implements the signal store with entity collections and operations
+- **Blog Demo Component**: UI to visualize and interact with the normalized data
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Normalization Benefits
 
-```bash
-ng generate component component-name
-```
+Normalizing data in the store provides several benefits:
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+1. **Single Source of Truth**: Each entity is stored only once, eliminating data duplication
+2. **Efficient Updates**: Updating an entity in one place updates it everywhere it's referenced
+3. **Simpler State Management**: Flat data structures are easier to manage than deeply nested ones
+4. **Performance**: Reduces unnecessary re-renders when only part of an entity changes
+5. **Consistency**: Ensures data consistency across the application
 
-```bash
-ng generate --help
-```
+## Implementation Details
 
-## Building
+### Entity Models
 
-To build the project run:
+The application uses three main entity types:
 
-```bash
-ng build
-```
+- **User**: Represents authors with username and name
+- **Comment**: Contains the comment text and references a user as the author
+- **Post**: Contains the post content, references a user as the author, and has an array of comment IDs
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Entity Configuration
 
-## Running unit tests
+Each entity type has its own configuration with:
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+- Entity type definition
+- Collection name
+- Custom ID selector function
 
-```bash
-ng test
-```
+### Normalization Process
 
-## Running end-to-end tests
+The demo includes a `normalizeBlogData` function that:
 
-For end-to-end (e2e) testing, run:
+1. Takes nested blog data (posts with nested authors and comments)
+2. Extracts all unique users, comments, and posts
+3. Replaces nested objects with references by ID
+4. Returns collections of normalized entities
 
-```bash
-ng e2e
-```
+### Store Operations
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+The store provides methods to:
 
-## Additional Resources
+- Load normalized blog data
+- Add, update, and remove entities
+- Handle relationships between entities (e.g., adding a comment to a post)
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+### Denormalization
+
+The store includes a computed signal that creates a denormalized view of posts with their authors and comments, which is useful for displaying in the UI.
+
+## Running the Demo
+
+1. Clone the repository
+2. Run `npm install`
+3. Run `ng serve`
+4. Open your browser to `http://localhost:4200`
+
+The demo UI shows:
+- The normalized data structure (users, comments, posts)
+- The denormalized view for display
+- Buttons to perform actions that demonstrate how the normalized store updates
+
+## Based On
+
+This demo is based on the normalization concepts from Redux as described in:
+https://redux.js.org/usage/structuring-reducers/normalizing-state-shape
+
+But implemented using NgRx Signal Store's entity management features:
+https://ngrx.io/guide/signals/signal-store/entity-management
