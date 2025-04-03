@@ -1,5 +1,11 @@
 import { signalStore, withMethods } from '@ngrx/signals';
-import type { Comment, Post, User } from '../models';
+import type {
+  Comment,
+  Post,
+  User,
+  DenormalizedPost,
+  DenormalizedComment,
+} from '../models';
 import {
   createEntitySchema,
   hasMany,
@@ -76,6 +82,59 @@ export const NormalizedBlogStore = signalStore(
       store.addNormalizedData(sampleBlogData, 'posts');
     },
 
+    // Get all posts with denormalized data
+    getAllPosts(): DenormalizedPost[] {
+      return store.selectDenormalized<DenormalizedPost>('posts')();
+    },
+
+    // Get a single post by ID with denormalized data
+    getPostById(postId: string): DenormalizedPost | null {
+      return store.selectDenormalized<DenormalizedPost>('posts', postId)();
+    },
+
+    // Get all users with denormalized data
+    getAllUsers(): User[] {
+      return store.selectDenormalized<User>('users')();
+    },
+
+    // Get a single user by username
+    getUserByUsername(username: string): User | null {
+      return store.selectDenormalized<User>('users', username)();
+    },
+
+    // Get all comments with denormalized data
+    getAllComments(): DenormalizedComment[] {
+      return store.selectDenormalized<DenormalizedComment>('comments')();
+    },
+
+    // Get a single comment by ID
+    getCommentById(commentId: string): DenormalizedComment | null {
+      return store.selectDenormalized<DenormalizedComment>(
+        'comments',
+        commentId
+      )();
+    },
+
+    // Get all comments for a post with denormalized data
+    getCommentsForPost(postId: string): DenormalizedComment[] {
+      const post = this.getPostById(postId);
+      if (!post) {
+        return [];
+      }
+
+      // Using the actual comment IDs from post
+      return post.comments
+        .map((comment) =>
+          typeof comment === 'string'
+            ? store.selectDenormalized<DenormalizedComment>(
+                'comments',
+                comment
+              )()
+            : comment
+        )
+        .filter((comment): comment is DenormalizedComment => comment !== null);
+    },
+
     // Add a new comment to a post
     addComment(postId: string, comment: Omit<Comment, 'id'>): void {
       // Generate a unique ID for the comment
@@ -116,21 +175,29 @@ export const NormalizedBlogStore = signalStore(
 
     // Remove a comment
     removeComment(commentId: string): void {
-      // Get all posts using the new selector
-      const postsSignal = store.selectDenormalized<Post>('posts');
+      // Get all posts using the selector
+      const posts = this.getAllPosts();
 
       // Find posts that reference this comment
-      postsSignal().forEach((post: Post) => {
-        if (post.comments.includes(commentId)) {
-          // Update the post to remove the comment reference
-          const result = store.updateEntity<Post>('posts', post.id, {
-            comments: post.comments.filter((id: string) => id !== commentId),
-          });
+      posts.forEach((post) => {
+        const postCommentIds = post.comments
+          .filter((comment) => typeof comment === 'object')
+          .map((comment) => (comment as DenormalizedComment).id);
 
-          if (!result.success) {
-            console.error(
-              `Failed to remove comment reference from post: ${result.error}`
-            );
+        if (postCommentIds.includes(commentId)) {
+          // Get the original post with string IDs
+          const originalPost = store.getEntityById<Post>('posts', post.id);
+          if (originalPost) {
+            // Update the post to remove the comment reference
+            const result = store.updateEntity<Post>('posts', post.id, {
+              comments: originalPost.comments.filter((id) => id !== commentId),
+            });
+
+            if (!result.success) {
+              console.error(
+                `Failed to remove comment reference from post: ${result.error}`
+              );
+            }
           }
         }
       });
@@ -140,8 +207,3 @@ export const NormalizedBlogStore = signalStore(
     },
   }))
 );
-
-// Create a provider for the normalized blog store
-export function provideNormalizedBlogStore() {
-  return NormalizedBlogStore;
-}

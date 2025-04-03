@@ -2,27 +2,28 @@ import { computed } from '@angular/core';
 import {
   patchState,
   signalStore,
+  type,
   withComputed,
   withMethods,
   withState,
 } from '@ngrx/signals';
 import {
-  withEntities,
-  setAllEntities,
   addEntity,
-  updateEntity,
+  entityConfig,
   removeEntity,
+  setAllEntities,
+  updateEntity,
   upsertEntity,
+  withEntities,
 } from '@ngrx/signals/entities';
-import { User, Comment, Post } from '../models';
-import { userConfig, commentConfig, postConfig } from './entity-adapters';
-import { 
-  normalizeBlogData, 
-  NestedPost 
-} from './utils/normalization.utils';
+import { Comment, Post, User } from '../models';
+import {
+  NestedPost,
+  normalizeBlogData,
+} from './features/normalization/blog.normalizers';
 
 // Re-export the sample data for use in components
-export { sampleBlogData } from './utils/normalization.utils';
+export { sampleBlogData } from './features/normalization/blog.normalizers';
 
 /**
  * Interface for a denormalized comment with the author object included
@@ -38,6 +39,24 @@ interface DenormalizedPost extends Omit<Post, 'author' | 'comments'> {
   author: User | undefined;
   comments: DenormalizedComment[];
 }
+
+export const userConfig = entityConfig({
+  entity: type<User>(),
+  collection: 'users',
+  selectId: (user: User) => user.username,
+});
+
+export const commentConfig = entityConfig({
+  entity: type<Comment>(),
+  collection: 'comments',
+  selectId: (comment: Comment) => comment.id,
+});
+
+export const postConfig = entityConfig({
+  entity: type<Post>(),
+  collection: 'posts',
+  selectId: (post: Post) => post.id,
+});
 
 // Create the blog store
 export const BlogStore = signalStore(
@@ -61,7 +80,9 @@ export const BlogStore = signalStore(
     };
 
     const findCommentById = (commentId: string): Comment | undefined => {
-      return store.commentsEntities().find((comment) => comment.id === commentId);
+      return store
+        .commentsEntities()
+        .find((comment) => comment.id === commentId);
     };
 
     const findPostById = (postId: string | number): Post | undefined => {
@@ -69,46 +90,54 @@ export const BlogStore = signalStore(
     };
 
     // Helper function to create a denormalized comment
-    const getDenormalizedComment = (commentId: string): DenormalizedComment | undefined => {
+    const getDenormalizedComment = (
+      commentId: string
+    ): DenormalizedComment | undefined => {
       const comment = findCommentById(commentId);
       if (!comment) return undefined;
-      
+
       return {
         ...comment,
-        author: findUserByUsername(comment.author)
+        author: findUserByUsername(comment.author),
       };
     };
 
     return {
       // Get a denormalized view of posts with author and comments
       denormalizedPosts: computed(() => {
-        return store.postsIds()
-          .map(postId => {
+        return store
+          .postsIds()
+          .map((postId) => {
             const post = findPostById(postId);
             if (!post) return null;
-            
+
             // Get the author for this post
             const author = findUserByUsername(post.author);
-            
+
             // Get denormalized comments for this post
             const comments = post.comments
-              .map(commentId => getDenormalizedComment(commentId))
-              .filter((comment): comment is DenormalizedComment => comment !== undefined);
-            
+              .map((commentId) => getDenormalizedComment(commentId))
+              .filter(
+                (comment): comment is DenormalizedComment =>
+                  comment !== undefined
+              );
+
             // Return the denormalized post
             return {
               ...post,
               author,
-              comments
+              comments,
             };
           })
           .filter((post): post is DenormalizedPost => post !== null);
       }),
-      
+
       // Loading state
       isLoading: computed(
         () =>
-          store.usersLoading() || store.commentsLoading() || store.postsLoading()
+          store.usersLoading() ||
+          store.commentsLoading() ||
+          store.postsLoading()
       ),
     };
   }),
